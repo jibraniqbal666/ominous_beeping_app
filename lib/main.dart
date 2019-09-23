@@ -1,8 +1,9 @@
+import 'package:audioplayers/audio_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shake/shake.dart';
 import 'package:flare_flutter/flare_actor.dart';
-import 'package:assets_audio_player/assets_audio_player.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 void main() => runApp(MyApp());
 
@@ -49,26 +50,11 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   bool startBleeping = false;
+  AudioCache audioPlayer = AudioCache(prefix: "music/");
+  AudioPlayer staticPlayer;
   ShakeDetector detector;
-  final music = <String>[
-    "bleeping.mp3",
-  ];
-  final AssetsAudioPlayer assetsAudioPlayer = AssetsAudioPlayer();
-
   @override
   void initState() {
-    assetsAudioPlayer.open(
-      AssetsAudio(
-        asset: music[0],
-        folder: "music/",
-      ),
-    );
-    assetsAudioPlayer.finished.listen((finished) {
-      if (finished && startBleeping) {
-        assetsAudioPlayer.seek(Duration(seconds: 13));
-        assetsAudioPlayer.play();
-      }
-    });
     detector = ShakeDetector.autoStart(onPhoneShake: () {
       if (!startBleeping) {
         setState(() {
@@ -87,14 +73,29 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void dispose() {
     detector.stopListening();
-    assetsAudioPlayer.stop();
+    audioPlayer.clearCache();
     super.dispose();
+  }
+
+  void _play() async {
+    staticPlayer = await audioPlayer.play("bleeping_6.mp3");
+  }
+
+  void _pause() async {
+    if (staticPlayer != null) {
+      await staticPlayer.stop();
+      staticPlayer = null;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (startBleeping) {
-      assetsAudioPlayer.play();
+      // assetsAudioPlayer.play();
+      if (staticPlayer == null)
+        _play();
+      else
+        staticPlayer.resume();
     }
     return Scaffold(
       backgroundColor: Color.fromARGB(18, 26, 43, 255),
@@ -116,7 +117,7 @@ class _MyHomePageState extends State<MyHomePage> {
                       isPaused: !startBleeping,
                     ),
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 3.0, left: 8.0),
+                      padding: const EdgeInsets.only(bottom: 3.5, left: 8.0),
                       child: Center(
                         child: Text(
                           "Stop",
@@ -130,6 +131,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   setState(() {
                     startBleeping = false;
                   });
+                  _pause();
                 },
               ),
             ),
